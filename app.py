@@ -1,11 +1,22 @@
 from flask import Flask
+import pandas as pd
 
 app = Flask(__name__)
-
 
 @app.route('/')
 def hello_world():  # put application's code here
     return 'Hello World!'
+
+
+# read from local
+movies = pd.read_csv('processed/movies_processed.csv')
+movies.drop_duplicates(inplace=True)
+
+ratings = pd.read_csv('processed/ratings_processed.csv')
+
+df_predict = pd.read_csv('data/TFIDF.csv')
+
+user_profile = pd.read_csv('data/user_profile.csv')
 
 def recommend_system(user_no):
     return

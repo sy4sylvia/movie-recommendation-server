@@ -39,7 +39,10 @@ for index, row in movies_df.iterrows():
 # Fill in the NaN with 0 if the movie does not belong to the genre
 movies_with_genres_df = movies_with_genres_df.fillna(0)
 
+movies_with_genres_df.to_csv('processed/movies_with_genres_df_processed.csv', encoding='utf-8', index=False)
+
 genres = movies_with_genres_df.set_index(movies_with_genres_df['movieId'])
+
 # drop the duplicate movieId column and other unnecessary ones
-genres = genres.drop(columns = ['movieId', 'title', 'genres', 'year'])
+genres = genres.drop(columns = ['title', 'genres', 'year'])
 genres.to_csv('processed/genres_for_movies_processed.csv', encoding='utf-8', index=False)
