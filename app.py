@@ -1,35 +1,74 @@
-from flask import Flask
+from flask import Flask, request, jsonify
+from flask_cors import CORS, cross_origin
 import pandas as pd
+import numpy as np
+import json
 
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
+movies_with_genres_df = pd.read_csv('processed/movies_with_genres_df_processed.csv')
+
+movies_df = pd.read_csv("processed/movies_processed.csv", header=0)
+ratings_df = pd.read_csv('processed/ratings_processed.csv', header=0)
+genres = pd.read_csv('processed/genres_for_movies_processed.csv', header=0)
+movies = pd.read_csv("dataset/movies.csv", header=0)
+
+
+# home page 
 @app.route('/')
-def hello_world():  # put application's code here
-    return 'Hello World!'
+@cross_origin()
+def dummy_function():  # put application's code here
+    return 'Hello World?'
 
 
-# read from local
-movies = pd.read_csv('processed/movies_processed.csv')
-movies.drop_duplicates(inplace=True)
+# profile page
+@app.route('/profile', methods=['GET'])
+def api_profile():  # put application's code here
+    if request.method == 'GET':
+        dummy_response_body = {
+            'id': 680333
+        }
+        return dummy_response_body
 
-ratings = pd.read_csv('processed/ratings_processed.csv')
 
-df_predict = pd.read_csv('data/TFIDF.csv')
+@app.route('/user', methods=['POST'])
+def post_test():
+    req_data = request.get_json()
 
-user_profile = pd.read_csv('data/user_profile.csv')
+    _userId = req_data.get("userId")
 
-def recommend_system(user_no):
+    print(type(_userId))
+
+    if _userId == 1:
+        return {"success": False,
+                "msg": "Email already taken"}, 400
+    else:
+        return {"success": True,
+                # "userID": new_user.id,
+                "msg": "The user was successfully registered"}, 200
+
+
+# recommendation route
+@app.route('/recommendation')
+# generate recommendation for existing users' recommendation
+def create_recommendation(givenId):
+    print(givenId)
+    user_rated_movies_df = ratings_df.loc[ratings_df['userId'].isin([givenId])]
+    # existing_user_movies = genres[genres['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
+
+    existing_user_movies = movies_with_genres_df[
+        movies_with_genres_df['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
+    existing_user_genres = existing_user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
+    existing_user_profile = np.matmul(existing_user_genres.transpose(), user_rated_movies_df['rating'])
+
+    existing_recommendation_df = ((genres * existing_user_profile).sum(axis=1)) / (existing_user_profile.sum())
+    # Recommendation System, sort the weighted average descendingly
+    existing_recommendation_df = existing_recommendation_df.sort_values(ascending=False)
+
+    existing_top_reco = movies_df.loc[movies_df['movieId'].isin(existing_recommendation_df.head(50).keys())]
+    # Filter out the movies that the existing user has already rated
+    existing_top_reco = existing_top_reco[~existing_top_reco['movieId'].isin(existing_user_movies['movieId'])]
+    existing_top_reco.to_csv('processed/top_user1.csv', encoding='utf-8', index=False)
     return
-    # user predicted rating to all films
-    # user_predicted_rating = df_predict[['movieId', df_predict.columns[user_no]]]
-    # # combine film rating and film detail
-    # user_rating_film = pd.merge(user_predicted_rating, movies, left_on='movieId', right_on='id')
-    # # films already watched by user
-    # already_watched = ratings[ratings['userId'].isin([user_no])]['movieId']
-    # # recommendation without films being watched by user
-    # all_rec = user_rating_film[~user_rating_film.index.isin(already_watched)]
-    # return all_rec.sort_values(by=str(user_no), ascending=False, axis=0).iloc[0:10][['movieId', 'title']]
-
-
-if __name__ == '__main__':
-    app.run()
