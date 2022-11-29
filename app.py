@@ -125,8 +125,8 @@ def get_movies():
         movie_data['year'] = document.get('year')
         movies_data[_movieId] = movie_data
 
-    response_body = json.dumps(movies_data)
-    print(response_body)
+    response_str = json.dumps(movies_data, indent=4)
+    response_body = json.loads(response_str)
 
     return response_body
 
