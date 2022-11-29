@@ -34,7 +34,7 @@ def api_profile():  # put application's code here
 
 
 @app.route('/user', methods=['POST'])
-def post_test():
+def post_userid():
     req_data = request.get_json()
 
     _userId = req_data.get('userId')
@@ -68,6 +68,39 @@ def post_test():
                 "msg": "Not a valid user id"}, 400
     else:
         return parsed, 200
+
+
+# register route
+@app.route('/register', methods=['POST'])
+def post_register():
+    req_data = request.get_json()
+    _email = req_data.get('email')
+    _password = req_data.get('password')
+    # TODO: insert into the database, after registration, assign a random userId,
+    #  ask the user to rate, then generate with the ratings
+
+    if _email == 'abcd':
+        return {"success": False,
+                "msg": "Already registered"}, 400
+    else:
+        return {"success": True,
+                "msg": "valid email"}, 200
+
+
+# login route
+@app.route('/login', methods=['POST'])
+def post_login():
+    req_data = request.get_json()
+    _email = req_data.get('email')
+    _password = req_data.get('password')
+    # TODO: compare the email and password with the users collection in the database
+
+    if _email == 'abcd':
+        return {"success": False,
+                "msg": "Not a valid user id"}, 400
+    else:
+        return {"success": True,
+                "msg": "valid email"}, 200
 
 
 # recommendation route
