@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
+from pymongo import MongoClient
 import pandas as pd
 import numpy as np
 import json
@@ -7,6 +8,12 @@ import json
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+client = MongoClient('localhost', 27017)
+
+db = client.movieRecoDB
+todos = db.todos
+movies_collection = db.movies
 
 movies_with_genres_df = pd.read_csv('processed/movies_with_genres_df_processed.csv')
 
@@ -26,11 +33,10 @@ def dummy_function():  # put application's code here
 # profile page
 @app.route('/profile', methods=['GET'])
 def api_profile():  # put application's code here
-    if request.method == 'GET':
-        dummy_response_body = {
-            'id': 680333
-        }
-        return dummy_response_body
+    dummy_response_body = {
+        'id': 680333
+    }
+    return dummy_response_body
 
 
 @app.route('/user', methods=['POST'])
@@ -101,6 +107,28 @@ def post_login():
     else:
         return {"success": True,
                 "msg": "valid email"}, 200
+
+
+# GET all the movies from the database
+@app.route('/movies', methods=['GET'])
+def get_movies():
+    # construct the dictionary of movies, key: movieId, value: movieInfo
+    movies_data = {}
+    # get data from the movies_collection
+    movie_cursor = movies_collection.find({})
+
+    for document in movie_cursor:
+        movie_data = {}
+        _movieId = document.get('movieId')
+        movie_data['title'] = document.get('title')
+        movie_data['genres'] = document.get('genres')
+        movie_data['year'] = document.get('year')
+        movies_data[_movieId] = movie_data
+
+    response_body = json.dumps(movies_data)
+    print(response_body)
+
+    return response_body
 
 
 # recommendation route
