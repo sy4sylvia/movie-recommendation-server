@@ -208,28 +208,30 @@ def post_movie_rating():
     _movieId = req_data.get('movieId')
     _rating = req_data.get('rating')
 
-    user_input = [{'movieId': int(_movieId), 'rating': int(_rating)}, {'movieId': 4, 'rating': 2.5}]
+    user_input = [{'movieId': int(_movieId), 'rating': _rating},
+                  {'movieId': 1, 'rating': 1},
+                  {'movieId': 2, 'rating': 1}]
+    # has to gather enough data to generate recommendation
     input_movies = pd.DataFrame(user_input)
 
     user_movies = movies_with_genres_df[movies_with_genres_df['movieId'].isin(input_movies['movieId'].tolist())]
     user_genres = user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
     transpose_genres = user_genres.transpose()
 
-    df = input_movies['rating'].to_frame().reset_index(drop=True)
-    user_profile = np.matmul(transpose_genres, df)
+    user_profile = np.matmul(transpose_genres, input_movies['rating'])
 
     # Similarly, get the genres of every movie in the original dataframe
     cur_genres = movies_with_genres_df.set_index(movies_with_genres_df['movieId'])
     cur_genres = cur_genres.drop(columns=['movieId', 'title', 'genres', 'year'])
-    recommendation_df = ((cur_genres * user_profile).sum(axis=1)) / (user_profile.sum()).sort_values(ascending=False)
-    new_user_top_reco = movies_df.loc[movies_df['movieId'].isin(recommendation_df.head(20).keys())]
+
+    recommendation_df = ((cur_genres * user_profile).sum(axis=1)) / (user_profile.sum())
+    recommendation_df = recommendation_df.sort_values(ascending=False)
+    new_user_top_reco = movies_df.loc[movies_df['movieId'].isin(recommendation_df.head(30).keys())]
 
     # convert into JSON objects
     result = new_user_top_reco.to_json(orient="records")
     parsed = json.loads(result)
     json.dumps(parsed, indent=4)
-
-    print(parsed)
 
     if int(_movieId) < 0:
         return {"success": False,
