@@ -45,6 +45,19 @@ def api_profile():  # put application's code here
     return dummy
 
 
+@app.route('/movieIds', methods=['GET'])
+def get_all_movie_ids():  # put application's code here
+    movie_cursor = movies_collection.find({})
+    movies_id_data = {}
+    movies_id_list = []
+    for document in movie_cursor:
+        _movieId = document.get("movieId")
+        movies_id_list.append(_movieId)
+
+    movies_id_data["movieIds"] = movies_id_list
+    return movies_id_data
+
+
 @app.route('/user-recommendation', methods=['POST'])
 def post_userid():
     req_data = request.get_json()
