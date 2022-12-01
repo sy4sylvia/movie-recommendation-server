@@ -159,17 +159,32 @@ def get_movies():
     return response
 
 
-# get a specific movie
+# GET a specific movie by its id
 @app.route('/movie', methods=['GET'])
 def get_movie_by_id():
-    _movieId = request.args['movieId']
-    dummy = {
-        "movieId": 5,
-        "title": "Father of the Bride Part II",
-        "genres": "['Comedy']",
-        "year": 1995
-    }
-    return jsonify(dummy)
+    if 'movieId' in request.args:
+        _movieId = request.args['movieId']  # string from the request params is
+        movie_cursor = movies_collection.find({"movieId": int(_movieId)})
+
+        _title = ""
+        _genres = ""
+        _year = ""
+
+        for document in movie_cursor:
+            _title = document.get("title")
+            _genres = document.get("genres")
+            _year = document.get("year")
+
+        if _title.__eq__(""):
+            return {"success": False,
+                    "msg": "Movie not found"}, 400
+
+        return {
+            "movieId": _movieId,
+            "title": _title,
+            "genres": _genres,
+            "year": _year
+        }, 200
 
 
 # post the rating and save the user data in the database to perform the get recommendation again
