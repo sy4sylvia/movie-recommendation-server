@@ -59,9 +59,8 @@ def get_all_movie_ids():  # put application's code here
 
 
 @app.route('/user-recommendation', methods=['POST'])
-def post_userid():
+def post_recommendation():
     req_data = request.get_json()
-
     _userId = req_data.get('userId')
 
     if _userId < 0:
@@ -69,36 +68,68 @@ def post_userid():
                 "msg": "Not a valid user id"}, 400
 
     if ratings_df.loc[ratings_df['userId'].isin([_userId])].empty:
-        return {"success": False,
-                "msg": "Not a valid user id"}, 400
+        ratings_cursor = ratings_collection.find({"userId": _userId})
+        user_input = []
 
-    # begin processing...
-    user_rated_movies_df = ratings_df.loc[ratings_df['userId'].isin([_userId])]
-    # existing_user_movies = genres[genres['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
+        for document in ratings_cursor:
+            _movieId = document.get("movieId")
+            print(type(_movieId))
+            _rating = document.get("rating")
+            _dict = {"movieId": _movieId, "rating": _rating}
+            user_input.append(_dict)
 
-    existing_user_movies = movies_with_genres_df[
-        movies_with_genres_df['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
-    existing_user_genres = existing_user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
-    existing_user_profile = np.matmul(existing_user_genres.transpose(), user_rated_movies_df['rating'])
+        # has to gather enough data to generate recommendation
+        input_movies = pd.DataFrame(user_input)
 
-    existing_recommendation_df = ((genres * existing_user_profile).sum(axis=1)) / (existing_user_profile.sum())
-    # Recommendation System, sort the weighted average descending
-    existing_recommendation_df = existing_recommendation_df.sort_values(ascending=False)
+        user_movies = movies_with_genres_df[movies_with_genres_df['movieId'].isin(input_movies['movieId'].tolist())]
+        user_genres = user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
+        transpose_genres = user_genres.transpose()
 
-    existing_top_reco = movies_df.loc[movies_df['movieId'].isin(existing_recommendation_df.head(30).keys())]
-    # Filter out the movies that the existing user has already rated
-    existing_top_reco = existing_top_reco[~existing_top_reco['movieId'].isin(existing_user_movies['movieId'])]
+        user_profile = np.matmul(transpose_genres, input_movies['rating'])
 
-    # convert into JSON objects
-    result = existing_top_reco.to_json(orient="records")
-    parsed = json.loads(result)
-    json.dumps(parsed, indent=4)
+        # Similarly, get the genres of every movie in the original dataframe
+        cur_genres = movies_with_genres_df.set_index(movies_with_genres_df['movieId'])
+        cur_genres = cur_genres.drop(columns=['movieId', 'title', 'genres', 'year'])
 
-    if _userId < 0:
-        return {"success": False,
-                "msg": "Not a valid user id"}, 400
-    else:
+        recommendation_df = ((cur_genres * user_profile).sum(axis=1)) / (user_profile.sum())
+        recommendation_df = recommendation_df.sort_values(ascending=False)
+        new_user_top_reco = movies_df.loc[movies_df['movieId'].isin(recommendation_df.head(30).keys())]
+
+        # convert into JSON objects
+        result = new_user_top_reco.to_json(orient="records")
+        parsed = json.loads(result)
+        json.dumps(parsed, indent=4)
+
         return parsed, 200
+
+    else:
+        # begin processing...
+        user_rated_movies_df = ratings_df.loc[ratings_df['userId'].isin([_userId])]
+        # existing_user_movies = genres[genres['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
+
+        existing_user_movies = movies_with_genres_df[
+            movies_with_genres_df['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
+        existing_user_genres = existing_user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
+        existing_user_profile = np.matmul(existing_user_genres.transpose(), user_rated_movies_df['rating'])
+
+        existing_recommendation_df = ((genres * existing_user_profile).sum(axis=1)) / (existing_user_profile.sum())
+        # Recommendation System, sort the weighted average descending
+        existing_recommendation_df = existing_recommendation_df.sort_values(ascending=False)
+
+        existing_top_reco = movies_df.loc[movies_df['movieId'].isin(existing_recommendation_df.head(30).keys())]
+        # Filter out the movies that the existing user has already rated
+        existing_top_reco = existing_top_reco[~existing_top_reco['movieId'].isin(existing_user_movies['movieId'])]
+
+        # convert into JSON objects
+        result = existing_top_reco.to_json(orient="records")
+        parsed = json.loads(result)
+        json.dumps(parsed, indent=4)
+
+        if _userId < 0:
+            return {"success": False,
+                    "msg": "Not a valid user id"}, 400
+        else:
+            return parsed, 200
 
 
 # POST register information: email and password
@@ -213,6 +244,8 @@ def post_movie_rating():
     _movieId = req_data.get('movieId')
     _rating = req_data.get('rating')
     _userId = req_data.get('userId')
+
+    # if the same movie is rated more than once, should update the previous object
 
     if _userId == "" or _movieId == "":
         return {"success": False,
