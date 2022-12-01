@@ -15,6 +15,8 @@ db = client.movieRecoDB
 movies_collection = db.movies
 # users_collection correspond to the users created on the web app, does not include the data from movieLens
 users_collection = db.users
+# ratings_collection includes rating data from movieLens
+ratings_collection = db.ratings
 
 movies_with_genres_df = pd.read_csv('processed/movies_with_genres_df_processed.csv')
 
@@ -191,35 +193,54 @@ def post_movie_rating():
     req_data = request.get_json()
     _movieId = req_data.get('movieId')
     _rating = req_data.get('rating')
-    # TODO: actually store the movieId & rating in the database,
-    #  and GET recommendation when calling the get recommendation page
-    user_input = [{'movieId': int(_movieId), 'rating': _rating},
-                  {'movieId': 1, 'rating': 1},
-                  {'movieId': 2, 'rating': 1}]
-    # has to gather enough data to generate recommendation
-    input_movies = pd.DataFrame(user_input)
+    _userId = req_data.get('userId')
 
-    user_movies = movies_with_genres_df[movies_with_genres_df['movieId'].isin(input_movies['movieId'].tolist())]
-    user_genres = user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
-    transpose_genres = user_genres.transpose()
-
-    user_profile = np.matmul(transpose_genres, input_movies['rating'])
-
-    # Similarly, get the genres of every movie in the original dataframe
-    cur_genres = movies_with_genres_df.set_index(movies_with_genres_df['movieId'])
-    cur_genres = cur_genres.drop(columns=['movieId', 'title', 'genres', 'year'])
-
-    recommendation_df = ((cur_genres * user_profile).sum(axis=1)) / (user_profile.sum())
-    recommendation_df = recommendation_df.sort_values(ascending=False)
-    new_user_top_reco = movies_df.loc[movies_df['movieId'].isin(recommendation_df.head(30).keys())]
-
-    # convert into JSON objects
-    result = new_user_top_reco.to_json(orient="records")
-    parsed = json.loads(result)
-    json.dumps(parsed, indent=4)
-
-    if int(_movieId) < 0:
+    if _userId == "" or _movieId == "":
         return {"success": False,
-                "msg": "Not a valid movie id"}, 400
-    else:
-        return parsed, 200
+                "msg": "Missing info"}, 400
+
+    if _rating < 0 or _rating > 5:
+        return {"success": False,
+                "msg": "Invalid rating score, please submit rating again"}, 400
+
+    _dict = {"movieId": _movieId, "rating": _rating, "userId": _userId}
+
+    # shallow copy the _dict, otherwise the objectId field would be assigned
+    response_body = _dict.copy()
+    ratings_collection.insert_one(_dict)
+    print(_dict)
+
+    return response_body, 200
+
+
+    # TODO: following -> generate recommendation for the user
+    # user_input = [{'movieId': int(_movieId), 'rating': _rating},
+    #               {'movieId': 1, 'rating': 1},
+    #               {'movieId': 2, 'rating': 1}]
+    # # has to gather enough data to generate recommendation
+    # input_movies = pd.DataFrame(user_input)
+    #
+    # user_movies = movies_with_genres_df[movies_with_genres_df['movieId'].isin(input_movies['movieId'].tolist())]
+    # user_genres = user_movies.drop(columns=['movieId', 'title', 'genres', 'year'])
+    # transpose_genres = user_genres.transpose()
+    #
+    # user_profile = np.matmul(transpose_genres, input_movies['rating'])
+    #
+    # # Similarly, get the genres of every movie in the original dataframe
+    # cur_genres = movies_with_genres_df.set_index(movies_with_genres_df['movieId'])
+    # cur_genres = cur_genres.drop(columns=['movieId', 'title', 'genres', 'year'])
+    #
+    # recommendation_df = ((cur_genres * user_profile).sum(axis=1)) / (user_profile.sum())
+    # recommendation_df = recommendation_df.sort_values(ascending=False)
+    # new_user_top_reco = movies_df.loc[movies_df['movieId'].isin(recommendation_df.head(30).keys())]
+    #
+    # # convert into JSON objects
+    # result = new_user_top_reco.to_json(orient="records")
+    # parsed = json.loads(result)
+    # json.dumps(parsed, indent=4)
+    #
+    # if int(_movieId) < 0:
+    #     return {"success": False,
+    #             "msg": "Not a valid movie id"}, 400
+    # else:
+    #     return parsed, 200
