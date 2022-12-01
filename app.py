@@ -80,7 +80,7 @@ def post_userid():
         return parsed, 200
 
 
-# register route
+# POST register information: email and password
 @app.route('/register', methods=['POST'])
 def post_register():
     req_data = request.get_json()
@@ -101,7 +101,7 @@ def post_register():
         return response_body
 
 
-# login route
+# POST login information: email and password, return the userId
 @app.route('/login', methods=['POST'])
 def post_login():
     req_data = request.get_json()
@@ -110,7 +110,7 @@ def post_login():
 
     users_cursor = users_collection.find({"email": _email})
 
-    _current_userId = 0
+    _cur_userId = 0
     for document in users_cursor:
         _cur_userId = document.get("userId")
         _db_password = document.get("password")
@@ -119,13 +119,11 @@ def post_login():
             return {"success": False,
                     "msg": "Wrong password"}, 401
 
-        _current_userId = _cur_userId
-
-    if _current_userId == 0:
+    if _cur_userId == 0:
         return {"success": False,
                 "msg": "User not found"}, 400
 
-    return {"email": _email, "userId": _current_userId}, 200
+    return {"email": _email, "userId": _cur_userId}, 200
 
 
 # GET all the movies from the database
