@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS, cross_origin
 from pymongo import MongoClient
 import pandas as pd
@@ -12,15 +12,16 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 client = MongoClient('localhost', 27017)
 
 db = client.movieRecoDB
-todos = db.todos
 movies_collection = db.movies
+# users_collection correspond to the users created on the web app, does not include the data from movieLens
+users_collection = db.users
 
 movies_with_genres_df = pd.read_csv('processed/movies_with_genres_df_processed.csv')
 
-movies_df = pd.read_csv("processed/movies_processed.csv", header=0)
+movies_df = pd.read_csv('processed/movies_processed.csv', header=0)
 ratings_df = pd.read_csv('processed/ratings_processed.csv', header=0)
 genres = pd.read_csv('processed/genres_for_movies_processed.csv', header=0)
-movies = pd.read_csv("dataset/movies.csv", header=0)
+movies = pd.read_csv('dataset/movies.csv', header=0)
 
 
 # home page 
@@ -85,15 +86,16 @@ def post_register():
     req_data = request.get_json()
     _email = req_data.get('email')
     _password = req_data.get('password')
-    # TODO: insert into the database, after registration, assign a random userId,
-    #  ask the user to rate, then generate with the ratings
 
-    if _email == 'abcd':
+    # generate the userId
+    _userId = 13 * len(_email) + 49 * len(_password) + 713
+    _dict = {"email": _email, "password": _password, "userId": _userId}
+
+    if _email == 'sg6803@nyu.edu':
         return {"success": False,
                 "msg": "Already registered"}, 400
     else:
-        return {"success": True,
-                "msg": "valid email"}, 200
+        return _dict
 
 
 # login route
@@ -130,62 +132,17 @@ def get_movies():
         # movie_data['genres'] = document.get('genres')
         movie_data["year"] = document.get("year")
 
-        genres_str = document.get("genres")
-        sliced_string = genres_str[1: len(genres_str) - 1]
-        genres_list = sliced_string.split(", ")
-        # print('after slicing', sliced_string)
-
-        genres_dict = {"genres": genres_list}
-        # movie_data['genres'] = genres_dict
-        # movie_data.update(genres_dict)
-
-        # movies_data[_movieId] = movie_data
-
         del document["_id"]
-        del document["genres"]
+        # del document["genres"]
 
         complete_movies_data[_movieId] = document
         movies_list.append(document)
 
-    movies_data["movies"] = movies_list
-    print(movies_data)
-    print('type(movies_data) ', type(movies_data))
+    movies_data["movies"] = movies_list[0:700]
 
-    response_str = json.dumps(movies_data, indent=4)
-    response_body = json.loads(response_str)
-
-    resp = jsonify(response_body)
-    # resp = jsonify(movies_data)
-
-    dummy = {
-        "movieId": 5,
-        "title": "Father of the Bride Part II",
-        "genres": "['Comedy']",
-        "year": 1995
-    }
-
-    dummy2 = {
-        "movies": [
-            dummy, dummy, dummy
-        ]
-    };
-
-    print('type(resp) ', type(resp))
-    resp.status_code = 200
-    return jsonify(dummy2)
-
-    # print('response_str', type(response_str))
-
-    # print(movies_data)
-    # print(type(response_body))
-    #
-    # response_str = json.dumps(movies_list, indent=4)
-    # print(type(response_str))
-    # response_body = json.loads(response_str)
-    # print('response_body', type(response_body))
-    # x
-
-    # return movies_data
+    js = json.dumps(movies_data)
+    response = Response(js, status=200, mimetype='application/json')
+    return response
 
 
 # get a specific movie
@@ -207,7 +164,8 @@ def post_movie_rating():
     req_data = request.get_json()
     _movieId = req_data.get('movieId')
     _rating = req_data.get('rating')
-
+    # TODO: actually store the movieId & rating in the database,
+    #  and GET recommendation when calling the get recommendation page
     user_input = [{'movieId': int(_movieId), 'rating': _rating},
                   {'movieId': 1, 'rating': 1},
                   {'movieId': 2, 'rating': 1}]
