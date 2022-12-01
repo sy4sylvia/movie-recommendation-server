@@ -90,28 +90,42 @@ def post_register():
     # generate the userId
     _userId = 13 * len(_email) + 49 * len(_password) + 713
     _dict = {"email": _email, "password": _password, "userId": _userId}
+    # shallow copy the _dict, otherwise the objectId field would be assigned
+    response_body = _dict.copy()
+    users_collection.insert_one(_dict)
 
     if _email == 'sg6803@nyu.edu':
         return {"success": False,
                 "msg": "Already registered"}, 400
     else:
-        return _dict
+        return response_body
 
 
 # login route
 @app.route('/login', methods=['POST'])
 def post_login():
     req_data = request.get_json()
-    _email = req_data.get('email')
-    _password = req_data.get('password')
-    # TODO: compare the email and password with the users collection in the database
+    _email = req_data.get("email")
+    _password = req_data.get("password")
 
-    if _email == 'abcd':
+    users_cursor = users_collection.find({"email": _email})
+
+    _current_userId = 0
+    for document in users_cursor:
+        _cur_userId = document.get("userId")
+        _db_password = document.get("password")
+
+        if _db_password != _password:
+            return {"success": False,
+                    "msg": "Wrong password"}, 401
+
+        _current_userId = _cur_userId
+
+    if _current_userId == 0:
         return {"success": False,
-                "msg": "Not a valid user id"}, 400
-    else:
-        return {"success": True,
-                "msg": "valid email"}, 200
+                "msg": "User not found"}, 400
+
+    return {"email": _email, "userId": _current_userId}, 200
 
 
 # GET all the movies from the database
