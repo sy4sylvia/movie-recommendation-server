@@ -39,9 +39,6 @@ def api_profile():  # put application's code here
     dummy = {
         'id': 680333
     }
-
-    response_str = json.dumps(dummy, indent=4)
-    dummy_response_body = json.loads(response_str)
     return dummy
 
 
