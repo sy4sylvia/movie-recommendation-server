@@ -103,7 +103,7 @@ def post_recommendation():
         return parsed, 200
 
     else:
-        # begin processing...
+        # begin processing
         user_rated_movies_df = ratings_df.loc[ratings_df['userId'].isin([_userId])]
         # existing_user_movies = genres[genres['movieId'].isin(user_rated_movies_df['movieId'].tolist())]
 
