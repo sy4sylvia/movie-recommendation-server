@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, Response
 from flask_cors import CORS, cross_origin
 from pymongo import MongoClient
 import pandas as pd
